@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="img.png" type="image/x-icon">
+    <title>Retail Management System</title>
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles */
+        .page {
+            display: none; /* Hide all pages by default */
+        }
+        .page.active {
+            display: block; /* Show active page */
+        }
+        /* Simple modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+        }
+        .modal.active {
+            display: block;
+        }
+        /* Custom styles for toast messages */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .toast {
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(20px);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast-success { background-color: #28a745; }
+        .toast-error { background-color: #dc3545; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- NEW: Login Screen -->
+    <!-- This is shown by default -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-200">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">SIGMA Login</h2>
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <button id="login-button" type="submit" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-semibold">
+                    Login
+                </button>
+                <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- NEW: Main Application Wrapper -->
+    <!-- This is hidden by default and shown on successful login -->
+    <div id="main-app" style="display: none;">
+        <!-- Header / Navigation -->
+        <nav class="bg-white shadow-md">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-2xl font-bold text-gray-800">SIGMA - Retail Management System - Showcase</span>
+                    </div>
+                    <div class="flex space-x-4">
+                        <!-- Navigation links -->
+                        <a href="#dashboard" class="nav-link text-gray-600 hover:text-blue-500">Dashboard</a>
+                        <a href="#products" class="nav-link text-gray-600 hover:text-blue-500">Products</a>
+                        <a href="#suppliers" class="nav-link text-gray-600 hover:text-blue-500">Suppliers</a>
+                        <a href="#customers" class="nav-link text-gray-600 hover:text-blue-500">Customers</a>
+                        <a href="#reports" class="nav-link text-gray-600 hover:text-blue-500">Reports</a>
+                        <a href="#new-sale" class="nav-link bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">New Sale</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="container mx-auto p-6">
+
+            <!-- Page: Dashboard -->
+            <div id="page-dashboard" class="page active">
+                <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Sales Today Summary -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Today's Sales</h3>
+                        <p class="text-3xl font-bold text-gray-900 mt-2" id="db-total-revenue">$0.00</p>
+                        <p class="text-gray-500" id="db-tx-count">0 transactions</p>
+                    </div>
+                    <!-- Low Stock Alert -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Low Stock Items</h3>
+                        <p class="text-3xl font-bold text-red-600 mt-2" id="db-low-stock-count">0</p>
+                        <p class="text-gray-500">items at or below reorder level</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Products -->
+            <div id="page-products" class="page">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-3xl font-bold">Products</h1>
+                    <button id="show-add-product-modal" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add Product</button>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Product rows will be injected here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Page: Suppliers -->
+            <div id="page-suppliers" class="page">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-3xl font-bold">Suppliers</h1>
+                    <button id="show-add-supplier-modal" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add Supplier</button>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplier-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Supplier rows will be injected here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Page: Customers -->
+            <div id="page-customers" class="page">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-3xl font-bold">Customers</h1>
+                    <button id="show-add-customer-modal" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add Customer</button>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Customer rows will be injected here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Page: New Sale -->
+            <div id="page-new-sale" class="page">
+                <h1 class="text-3xl font-bold mb-6">New Sale</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Left: Cart -->
+                    <div class="md:col-span-2 bg-white p-6 rounded-lg shadow">
+                        <h2 class="text-xl font-semibold mb-4">Cart</h2>
+                        <!-- Product Adder -->
+                        <div class="flex space-x-4 mb-4">
+                            <select id="sale-product-select" class="flex-grow p-2 border rounded-md">
+                                <option value="">Select a product...</option>
+                            </select>
+                            <input id="sale-product-qty" type="number" value="1" min="1" class="w-20 p-2 border rounded-md">
+                            <button id="add-to-cart-btn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Add</button>
+                        </div>
+                        <!-- Cart Items Table -->
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart-items-list" class="bg-white divide-y divide-gray-200">
+                                <!-- Cart items injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Right: Summary -->
+                    <div class="bg-white p-6 rounded-lg shadow h-fit">
+                        <h2 class="text-xl font-semibold mb-4">Summary</h2>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Subtotal:</span>
+                                <span id="cart-subtotal" class="font-medium">$0.00</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Tax (8%):</span>
+                                <span id="cart-tax" class="font-medium">$0.00</span>
+                            </div>
+                            <div class="flex justify-between text-xl font-bold">
+                                <span>Total:</span>
+                                <span id="cart-total">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <label for="sale-customer-select" class="block text-sm font-medium text-gray-700">Customer (Optional)</label>
+                            <select id="sale-customer-select" class="mt-1 block w-full p-2 border rounded-md">
+                                <option value="">Walk-in Customer</option>
+                            </select>
+                        </div>
+                        <button id="submit-sale-btn" class="bg-green-600 text-white w-full px-4 py-3 rounded-md hover:bg-green-700 mt-6 font-bold text-lg">Complete Sale</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Reports -->
+            <div id="page-reports" class="page">
+                <h1 class="text-3xl font-bold mb-6">Reports</h1>
+                <!-- Sales Summary -->
+                <div class="bg-white p-6 rounded-lg shadow mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Sales Summary</h2>
+                    <div class="flex space-x-4 mb-4 items-end">
+                        <div>
+                            <label for="report-from-date" class="block text-sm font-medium text-gray-700">From Date</label>
+                            <input type="date" id="report-from-date" class="mt-1 p-2 border rounded-md">
+                        </div>
+                        <div>
+                            <label for="report-to-date" class="block text-sm font-medium text-gray-700">To Date</label>
+                            <input type="date" id="report-to-date" class="mt-1 p-2 border rounded-md">
+                        </div>
+                        <button id="run-sales-report" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Run</button>
+                    </div>
+                    <!-- Sales Summary Results -->
+                    <div id="sales-report-results" class="grid grid-cols-3 gap-4 hidden">
+                        <div class="bg-gray-50 p-4 rounded">
+                            <span class="text-sm text-gray-500">Total Revenue</span>
+                            <p id="report-total-revenue" class="text-2xl font-bold">$0.00</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <span class="text-sm text-gray-500">Transactions</span>
+                            <p id="report-tx-count" class="text-2xl font-bold">0</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <span class="text-sm text-gray-500">Avg. Order Value</span>
+                            <p id="report-avg-order" class="text-2xl font-bold">$0.00</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Low Stock Report -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">Low Stock Report</h2>
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reorder Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="low-stock-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Low stock items injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Modal for Add/Edit Product -->
+        <div id="product-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="product-modal-title" class="text-2xl font-bold mb-4">Add Product</h2>
+                <form id="product-form">
+                    <input type="hidden" id="product-id">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="mb-4">
+                            <label for="product-name" class="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" id="product-name" class="mt-1 p-2 border rounded-md w-full" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="product-sku" class="block text-sm font-medium text-gray-700">SKU</label>
+                            <input type="text" id="product-sku" class="mt-1 p-2 border rounded-md w-full" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="product-price" class="block text-sm font-medium text-gray-700">Price ($)</label>
+                            <input type="number" id="product-price" step="0.01" min="0" class="mt-1 p-2 border rounded-md w-full" required>
+                            <span class="text-xs text-gray-500">e.g., 19.99</span>
+                        </div>
+                        <div class="mb-4">
+                            <label for="product-stock" class="block text-sm font-medium text-gray-700">Stock Qty</label>
+                            <input type="number" id="product-stock" min="0" class="mt-1 p-2 border rounded-md w-full" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="product-reorder" class="block text-sm font-medium text-gray-700">Reorder Level</label>
+                            <input type="number" id="product-reorder" min="0" class="mt-1 p-2 border rounded-md w-full" value="10">
+                        </div>
+                        <div class="mb-4">
+                            <label for="product-supplier" class="block text-sm font-medium text-gray-700">Supplier</label>
+                            <select id="product-supplier-select" class="mt-1 p-2 border rounded-md w-full">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" id="cancel-product-modal" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Save Product</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Add/Edit Supplier -->
+        <div id="supplier-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="supplier-modal-title" class="text-2xl font-bold mb-4">Add Supplier</h2>
+                <form id="supplier-form">
+                    <input type="hidden" id="supplier-id">
+                    <div class="mb-4">
+                        <label for="supplier-name" class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="supplier-name" class="mt-1 p-2 border rounded-md w-full" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="supplier-contact" class="block text-sm font-medium text-gray-700">Contact Name</label>
+                        <input type="text" id="supplier-contact" class="mt-1 p-2 border rounded-md w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label for="supplier-email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="supplier-email" class="mt-1 p-2 border rounded-md w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label for="supplier-phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                        <input type="tel" id="supplier-phone" class="mt-1 p-2 border rounded-md w-full">
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" id="cancel-supplier-modal" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Save Supplier</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal for Add/Edit Customer -->
+        <div id="customer-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="customer-modal-title" class="text-2xl font-bold mb-4">Add Customer</h2>
+                <form id="customer-form">
+                    <input type="hidden" id="customer-id">
+                    <div class="mb-4">
+                        <label for="customer-name" class="block text-sm font-medium text-gray-700">Name</label>
+                        <input type="text" id="customer-name" class="mt-1 p-2 border rounded-md w-full" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="customer-email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="customer-email" class="mt-1 p-2 border rounded-md w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label for="customer-phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                        <input type="tel" id="customer-phone" class="mt-1 p-2 border rounded-md w-full">
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" id="cancel-customer-modal" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">Cancel</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Save Customer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div> <!-- End of #main-app wrapper -->
+
+    <!-- Toast Message Container -->
+    <div id="toast-container"></div>
+
+
+    <!-- Main JavaScript -->
+    <script type="module">
+        // --- CRITICAL HOSTING CHANGE ---
+        // Change this URL to your PUBLIC backend URL after you deploy it.
+        // For example: 'https://rms-backend.onrender.com'
+        //
+        // Leave as-is for local testing.
+        const API_BASE_URL = 'http://127.0.0.1:8000';
+
+        // --- Helper: Format cents to $0.00 ---
+        function formatCents(cents) {
+            if (cents === null || cents === undefined) return "$0.00";
+            return (cents / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
+        }
+
+        // --- Helper: Get today's date in YYYY-MM-DD ---
+        function getTodayDate() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        // --- Helper: API Fetch Wrapper ---
+        const api = {
+            get: async (endpoint) => await request('GET', endpoint),
+            post: async (endpoint, body) => await request('POST', endpoint, body),
+            put: async (endpoint, body) => await request('PUT', endpoint, body),
+            del: async (endpoint) => await request('DELETE', endpoint),
+        };
+
+        async function request(method, endpoint, body = null) {
+            try {
+                const config = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+                if (body) {
+                    config.body = JSON.stringify(body);
+                }
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+                if (response.status === 204) {
+                    return { ok: true, data: null };
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    // API returned an error (e.g., validation, stock)
+                    const errorMsg = data.detail || 'An unknown API error occurred.';
+                    throw new Error(errorMsg);
+                }
+
+                return { ok: true, data: data };
+            } catch (err) {
+                // Network error or other fetch-related error
+                console.error(`API Error (${method} ${endpoint}):`, err);
+                return { ok: false, error: err.message };
+            }
+        }
+
+        // --- Helper: Toast Notifications ---
+        const toastContainer = document.getElementById('toast-container');
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'success' ? 'toast-success' : 'toast-error'}`;
+            toast.textContent = message;
+
+            toastContainer.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10); // small delay to allow CSS transition
+
+            // Auto-hide
+            setTimeout(() => {
+                toast.classList.remove('show');
+                // Remove from DOM after transition
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // --- SPA Router ---
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        function showPage(pageId) {
+            // Hide all pages
+            pages.forEach(page => page.classList.remove('active'));
+            // Show the target page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                // Load data for the page
+                loadPageData(pageId);
+            }
+
+            // Update active nav link (simple version)
+            navLinks.forEach(link => {
+                if (link.hash === `#${pageId.replace('page-', '')}`) {
+                    link.classList.add('font-bold', 'text-blue-500');
+                    link.classList.remove('text-gray-600');
+                } else {
+                    link.classList.remove('font-bold', 'text-blue-500');
+                    link.classList.add('text-gray-600');
+                }
+            });
+        }
+
+        // Handle nav link clicks
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = `page-${e.target.hash.substring(1)}`;
+                showPage(pageId);
+            });
+        });
+
+        // Handle browser hash changes (e.g., back button)
+        window.addEventListener('hashchange', () => {
+            const pageId = `page-${location.hash.substring(1) || 'dashboard'}`;
+            showPage(pageId);
+        });
+
+        // --- Data Loading Logic ---
+        async function loadPageData(pageId) {
+            switch (pageId) {
+                case 'page-dashboard':
+                    await loadDashboard();
+                    break;
+                case 'page-products':
+                    await loadProducts();
+                    break;
+                case 'page-suppliers':
+                    await loadSuppliers();
+                    break;
+                case 'page-customers':
+                    await loadCustomers();
+                    break;
+                case 'page-new-sale':
+                    await loadNewSale();
+                    break;
+                case 'page-reports':
+                    await loadReports();
+                    break;
+            }
+        }
+
+        // --- Dashboard ---
+        async function loadDashboard() {
+            const today = getTodayDate();
+            // Fetch today's sales summary
+            const salesSummary = await api.get(`/api/reports/sales-summary?from_date=${today}&to_date=${today}`);
+            if(salesSummary.ok) {
+                document.getElementById('db-total-revenue').textContent = formatCents(salesSummary.data.total_revenue_cents);
+                document.getElementById('db-tx-count').textContent = `${salesSummary.data.transaction_count} transactions`;
+            }
+            // Fetch low stock report
+            const lowStock = await api.get('/api/reports/low-stock');
+            if(lowStock.ok) {
+                document.getElementById('db-low-stock-count').textContent = lowStock.data.length;
+            }
+        }
+
+        // --- Products ---
+        const productList = document.getElementById('product-list');
+        const productModal = document.getElementById('product-modal');
+        const productForm = document.getElementById('product-form');
+
+        async function loadProducts() {
+            const res = await api.get('/api/products');
+            if (!res.ok) {
+                showToast('Failed to load products', 'error');
+                return;
+            }
+            productList.innerHTML = res.data.map(product => `
+                <tr data-id="${product.id}">
+                    <td class="px-6 py-4 whitespace-nowrap">${product.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${product.sku}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${formatCents(product.unit_price_cents)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${product.quantity_available}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-indigo-600 hover:text-indigo-900 btn-edit-product">Edit</button>
+                        <button class="text-red-600 hover:text-red-900 ml-4 btn-delete-product">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Load suppliers for dropdown
+            await loadSuppliersForDropdown('product-supplier-select');
+        }
+
+        // Show Product Modal (Add)
+        document.getElementById('show-add-product-modal').addEventListener('click', () => {
+            productForm.reset();
+            document.getElementById('product-id').value = '';
+            document.getElementById('product-modal-title').textContent = 'Add Product';
+            productModal.classList.add('active');
+        });
+
+        // Show Product Modal (Edit)
+        productList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('btn-edit-product')) {
+                const row = e.target.closest('tr');
+                const id = row.dataset.id;
+                const res = await api.get(`/api/products/${id}`);
+                if (!res.ok) {
+                    showToast('Failed to load product data', 'error');
+                    return;
+                }
+                const product = res.data;
+                document.getElementById('product-id').value = product.id;
+                document.getElementById('product-name').value = product.name;
+                document.getElementById('product-sku').value = product.sku;
+                document.getElementById('product-price').value = (product.unit_price_cents / 100).toFixed(2);
+                document.getElementById('product-stock').value = product.quantity_available;
+                document.getElementById('product-reorder').value = product.reorder_level;
+                document.getElementById('product-supplier-select').value = product.supplier_id || '';
+
+                document.getElementById('product-modal-title').textContent = 'Edit Product';
+                productModal.classList.add('active');
+            }
+
+            if (e.target.classList.contains('btn-delete-product')) {
+                const row = e.target.closest('tr');
+                const id = row.dataset.id;
+                // No confirm()! Instead, we'd build a custom confirmation modal.
+                // For this demo, we just delete.
+                const res = await api.del(`/api/products/${id}`);
+                if (res.ok) {
+                    showToast('Product deleted');
+                    row.remove();
+                } else {
+                    showToast(res.error || 'Failed to delete product', 'error');
+                }
+            }
+        });
+
+        // Hide Product Modal
+        document.getElementById('cancel-product-modal').addEventListener('click', () => {
+            productModal.classList.remove('active');
+        });
+
+        // Save Product (Create or Update)
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('product-id').value;
+            const priceInCents = Math.round(parseFloat(document.getElementById('product-price').value) * 100);
+            const supplierId = document.getElementById('product-supplier-select').value;
+
+            const productData = {
+                name: document.getElementById('product-name').value,
+                sku: document.getElementById('product-sku').value,
+                unit_price_cents: priceInCents,
+                quantity_available: parseInt(document.getElementById('product-stock').value),
+                reorder_level: parseInt(document.getElementById('product-reorder').value),
+                supplier_id: supplierId ? parseInt(supplierId) : null,
+            };
+
+            const res = id
+                ? await api.put(`/api/products/${id}`, productData)
+                : await api.post('/api/products', productData);
+
+            if (res.ok) {
+                showToast(id ? 'Product updated' : 'Product created');
+                productModal.classList.remove('active');
+                await loadProducts(); // Refresh list
+            } else {
+                showToast(res.error || 'Failed to save product', 'error');
+            }
+        });
+
+        // --- Suppliers ---
+        const supplierList = document.getElementById('supplier-list');
+        const supplierModal = document.getElementById('supplier-modal');
+        const supplierForm = document.getElementById('supplier-form');
+
+        async function loadSuppliers() {
+            const res = await api.get('/api/suppliers');
+            if (!res.ok) {
+                showToast('Failed to load suppliers', 'error');
+                return;
+            }
+            supplierList.innerHTML = res.data.map(supplier => `
+                <tr data-id="${supplier.id}">
+                    <td class="px-6 py-4 whitespace-nowrap">${supplier.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${supplier.contact_name || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${supplier.email || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${supplier.phone || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadSuppliersForDropdown(selectId) {
+            const res = await api.get('/api/suppliers');
+            if (res.ok) {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">None</option>'; // Reset
+                res.data.forEach(supplier => {
+                    select.innerHTML += `<option value="${supplier.id}">${supplier.name}</option>`;
+                });
+            }
+        }
+
+        // Show Supplier Modal (Add)
+        document.getElementById('show-add-supplier-modal').addEventListener('click', () => {
+            supplierForm.reset();
+            document.getElementById('supplier-id').value = '';
+            document.getElementById('supplier-modal-title').textContent = 'Add Supplier';
+            supplierModal.classList.add('active');
+        });
+
+        // Hide Supplier Modal
+        document.getElementById('cancel-supplier-modal').addEventListener('click', () => {
+            supplierModal.classList.remove('active');
+        });
+
+        // Save Supplier (Create)
+        supplierForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('supplier-id').value; // Not used for edit yet, but good practice
+            const supplierData = {
+                name: document.getElementById('supplier-name').value,
+                contact_name: document.getElementById('supplier-contact').value,
+                email: document.getElementById('supplier-email').value,
+                phone: document.getElementById('supplier-phone').value,
+            };
+
+            const res = await api.post('/api/suppliers', supplierData);
+
+            if (res.ok) {
+                showToast('Supplier created');
+                supplierModal.classList.remove('active');
+                await loadSuppliers(); // Refresh list
+            } else {
+                showToast(res.error || 'Failed to save supplier', 'error');
+            }
+        });
+
+        // --- Customers ---
+        const customerList = document.getElementById('customer-list');
+        const customerModal = document.getElementById('customer-modal');
+        const customerForm = document.getElementById('customer-form');
+
+        async function loadCustomers() {
+            const res = await api.get('/api/customers');
+            if (!res.ok) {
+                showToast('Failed to load customers', 'error');
+                return;
+            }
+            customerList.innerHTML = res.data.map(customer => `
+                <tr data-id="${customer.id}">
+                    <td class="px-6 py-4 whitespace-nowrap">${customer.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${customer.email || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${customer.phone || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadCustomersForDropdown(selectId) {
+            const res = await api.get('/api/customers');
+            if (res.ok) {
+                const select = document.getElementById(selectId);
+                select.innerHTML = '<option value="">Walk-in Customer</option>'; // Reset
+                res.data.forEach(customer => {
+                    select.innerHTML += `<option value="${customer.id}">${customer.name}</option>`;
+                });
+            }
+        }
+
+        // Show Customer Modal (Add)
+        document.getElementById('show-add-customer-modal').addEventListener('click', () => {
+            customerForm.reset();
+            document.getElementById('customer-id').value = '';
+            document.getElementById('customer-modal-title').textContent = 'Add Customer';
+            customerModal.classList.add('active');
+        });
+
+        // Hide Customer Modal
+        document.getElementById('cancel-customer-modal').addEventListener('click', () => {
+            customerModal.classList.remove('active');
+        });
+
+        // Save Customer (Create)
+        customerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const customerData = {
+                name: document.getElementById('customer-name').value,
+                email: document.getElementById('customer-email').value,
+                phone: document.getElementById('customer-phone').value,
+            };
+
+            const res = await api.post('/api/customers', customerData);
+
+            if (res.ok) {
+                showToast('Customer created');
+                customerModal.classList.remove('active');
+                await loadCustomers(); // Refresh list
+            } else {
+                showToast(res.error || 'Failed to save customer', 'error');
+            }
+        });
+
+        // --- New Sale Page ---
+        let saleProducts = []; // Cache for product data
+        let cart = []; // Array of { product_id, name, unit_price_cents, quantity }
+
+        async function loadNewSale() {
+            // Load products for dropdown
+            const res = await api.get('/api/products');
+            if (res.ok) {
+                saleProducts = res.data;
+                const select = document.getElementById('sale-product-select');
+                select.innerHTML = '<option value="">Select a product...</option>';
+                saleProducts.forEach(p => {
+                    select.innerHTML += `<option value="${p.id}">${p.name} (In stock: ${p.quantity_available})</option>`;
+                });
+            }
+            // Load customers for dropdown
+            await loadCustomersForDropdown('sale-customer-select');
+            // Reset cart
+            cart = [];
+            updateCart();
+        }
+
+        // Add to Cart
+        document.getElementById('add-to-cart-btn').addEventListener('click', () => {
+            const productId = parseInt(document.getElementById('sale-product-select').value);
+            const quantity = parseInt(document.getElementById('sale-product-qty').value);
+
+            if (!productId || quantity <= 0) {
+                showToast('Please select a product and quantity', 'error');
+                return;
+            }
+
+            const product = saleProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            // Check if already in cart
+            const existingItem = cart.find(item => item.product_id === productId);
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({
+                    product_id: product.id,
+                    name: product.name,
+                    unit_price_cents: product.unit_price_cents,
+                    quantity: quantity
+                });
+            }
+
+            updateCart();
+
+            // Reset inputs
+            document.getElementById('sale-product-select').value = '';
+            document.getElementById('sale-product-qty').value = '1';
+        });
+
+        // Update Cart UI
+        function updateCart() {
+            const cartList = document.getElementById('cart-items-list');
+            if (cart.length === 0) {
+                cartList.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">Cart is empty</td></tr>';
+            } else {
+                cartList.innerHTML = cart.map((item, index) => `
+                    <tr>
+                        <td class="px-4 py-2">${item.name}</td>
+                        <td class="px-4 py-2">${item.quantity}</td>
+                        <td class="px-4 py-2">${formatCents(item.unit_price_cents)}</td>
+                        <td class="px-4 py-2">${formatCents(item.unit_price_cents * item.quantity)}</td>
+                        <td class="px-4 py-2">
+                            <button data-index="${index}" class="text-red-600 hover:text-red-900 btn-remove-from-cart">Remove</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Update totals
+            const subtotal = cart.reduce((acc, item) => acc + (item.unit_price_cents * item.quantity), 0);
+            const tax = Math.round(subtotal * 0.08); // 8% tax, matches backend
+            const total = subtotal + tax;
+
+            document.getElementById('cart-subtotal').textContent = formatCents(subtotal);
+            document.getElementById('cart-tax').textContent = formatCents(tax);
+            document.getElementById('cart-total').textContent = formatCents(total);
+        }
+
+        // Remove from Cart
+        document.getElementById('cart-items-list').addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-remove-from-cart')) {
+                const index = parseInt(e.target.dataset.index);
+                cart.splice(index, 1);
+                updateCart();
+            }
+        });
+
+        // Submit Sale
+        document.getElementById('submit-sale-btn').addEventListener('click', async () => {
+            if (cart.length === 0) {
+                showToast('Cannot submit an empty cart', 'error');
+                return;
+            }
+
+            const customerId = document.getElementById('sale-customer-select').value;
+            const saleData = {
+                customer_id: customerId ? parseInt(customerId) : null,
+                items: cart.map(item => ({
+                    product_id: item.product_id,
+                    quantity: item.quantity
+                }))
+            };
+
+            const res = await api.post('/api/sales', saleData);
+
+            if (res.ok) {
+                showToast('Sale successful!', 'success');
+                // Sale successful, clear cart and go to dashboard
+                cart = [];
+                updateCart();
+                showPage('page-dashboard');
+            } else {
+                // Show the specific error from the backend (e.g., "Insufficient stock")
+                showToast(res.error, 'error');
+            }
+        });
+
+        // --- Reports ---
+        async function loadReports() {
+            // Set default dates
+            const today = getTodayDate();
+            document.getElementById('report-from-date').value = today;
+            document.getElementById('report-to-date').value = today;
+
+            // Load low-stock report automatically
+            const lowStockList = document.getElementById('low-stock-list');
+            const res = await api.get('/api/reports/low-stock');
+            if (res.ok) {
+                lowStockList.innerHTML = res.data.map(p => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">${p.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${p.sku}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-red-600 font-bold">${p.quantity_available}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${p.reorder_level}</td>
+                    </tr>
+                `).join('');
+            } else {
+                lowStockList.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">Failed to load report</td></tr>';
+            }
+
+            // Run initial sales report
+            await runSalesReport();
+        }
+
+        async function runSalesReport() {
+            const fromDate = document.getElementById('report-from-date').value;
+            const toDate = document.getElementById('report-to-date').value;
+
+            if (!fromDate || !toDate) {
+                showToast('Please select a From and To date', 'error');
+                return;
+            }
+
+            const res = await api.get(`/api/reports/sales-summary?from_date=${fromDate}&to_date=${toDate}`);
+            const resultsDiv = document.getElementById('sales-report-results');
+
+            if (res.ok) {
+                document.getElementById('report-total-revenue').textContent = formatCents(res.data.total_revenue_cents);
+                document.getElementById('report-tx-count').textContent = res.data.transaction_count;
+                document.getElementById('report-avg-order').textContent = formatCents(res.data.average_order_value_cents);
+                resultsDiv.classList.remove('hidden');
+            } else {
+                showToast(res.error || 'Failed to run report', 'error');
+                resultsDiv.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('run-sales-report').addEventListener('click', runSalesReport);
+
+        // --- NEW: Login Logic ---
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Simple hardcoded check
+            if (username === 'admin' && password === 'pass') {
+                // Success
+                loginScreen.style.display = 'none';
+                mainApp.style.display = 'block';
+                // Load the initial page
+                const pageId = `page-${location.hash.substring(1) || 'dashboard'}`;
+                showPage(pageId);
+            } else {
+                // Fail
+                loginError.textContent = 'Invalid username or password.';
+            }
+        });
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // NOTE: We no longer load the page here.
+            // We wait for the user to log in.
+        });
+
+    </script>
+
+</body>
+</html>
